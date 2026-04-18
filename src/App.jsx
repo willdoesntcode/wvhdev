@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import * as THREE from 'three'
+const whatsappVideo = '/whatsapp.mp4'
+const phoneVideo = '/phone.MOV'
 import {
-  Menu, X, ArrowRight, ChevronDown, Play,
+  Menu, X, ArrowRight, ChevronDown,
   PhoneOff, Moon, ClipboardList, Zap,
   MessageSquare, Phone, MessageCircle, Globe,
   Settings, Link2, CalendarCheck,
@@ -31,8 +33,8 @@ KEY FACTS:
 - Setup: 2-3 weeks
 - No long-term contracts — cancel with 30 days notice
 - No technical knowledge required — WVH handles everything
-- Works alongside existing phone number via call forwarding
-- Runs 24/7 including nights and weekends
+- AI phone assistant is flexible: can use a brand new number, work alongside an existing number via call forwarding, or handle only out-of-hours/missed calls — fully customisable
+- Runs 24/7 or configured for specific hours only
 
 CONTACT: will@wvhdevelopments.com
 
@@ -378,6 +380,10 @@ function HowItWorks() {
 
 /* ─── Demo Video ─────────────────────────────────────────────────────────────── */
 function DemoVideo() {
+  const demos = [
+    { src: whatsappVideo, type: 'video/mp4',  title: 'WhatsApp Bot Demo',        desc: 'Watch the WhatsApp bot handle a live enquiry from first message to captured lead.',                     label: 'WHATSAPP BOT' },
+    { src: phoneVideo,    type: 'video/mp4',  title: 'AI Phone Assistant Demo',  desc: 'Hear the AI phone assistant handle a real inbound call — taking details and qualifying the lead.',  label: 'PHONE ASSISTANT' },
+  ]
   return (
     <section className="demo-section" id="demo">
       <div className="container">
@@ -387,16 +393,12 @@ function DemoVideo() {
         </div>
         <p className="demo-desc anim d2">Real demos of the actual WVH AI system. Watch how it handles enquiries — qualifying leads and booking appointments without any human involvement.</p>
         <div className="demo-grid">
-          {[
-            { title: 'WhatsApp Bot Demo', desc: 'Watch the WhatsApp bot handle a live enquiry from first message to captured lead.', label: 'WHATSAPP BOT' },
-            { title: 'AI Phone Assistant Demo', desc: 'Hear the AI phone assistant handle a real inbound call — taking details and qualifying the lead.', label: 'PHONE ASSISTANT' },
-          ].map((d, i) => (
+          {demos.map((d, i) => (
             <div className={`demo-card tilt-card anim d${i+1}`} key={i}>
               <div className="demo-video-wrap">
-                <div className="demo-video-placeholder">
-                  <div className="demo-play-btn"><Play size={24} fill="currentColor" /></div>
-                  <div className="demo-video-label">{d.label}</div>
-                </div>
+                <video className="demo-video" controls playsInline preload="metadata">
+                  <source src={d.src} type={d.type} />
+                </video>
               </div>
               <div className="demo-card-footer">
                 <div className="demo-badge"><span className="live-dot" /> Real System Demo</div>
@@ -483,7 +485,7 @@ function Testimonials() {
       initials: 'JN'
     },
     {
-      text: "WVH completely transformed our online presence. The website they built is sharp, professional and looks unlike anything we had before. The whole process was effortless and the results speak for themselves.",
+      text: "WVH have been handling our social media and the difference has been night and day. Consistent, professional content going out regularly without us having to think about it. Our online presence finally reflects the quality of our work.",
       name: 'Rite Torc Services',
       role: 'Client, South East England',
       initials: 'RT'
@@ -520,7 +522,7 @@ function Testimonials() {
 function FAQ() {
   const [open, setOpen] = useState(null)
   const items = [
-    { q: 'Do I need to change my existing phone number?', a: "Not at all. Our AI phone assistant works alongside your existing number via call forwarding. When you are unavailable, calls are handled automatically. Your clients always call the same number." },
+    { q: 'Do I need to change my existing phone number?', a: "No — but you have options. The AI phone assistant can work alongside your existing number via call forwarding so nothing changes for your clients. Alternatively, we can set it up with a brand new number, or configure it to only handle out-of-hours calls so it only kicks in when you're unavailable. It's completely flexible." },
     { q: 'How long does it take to set everything up?', a: "Most clients are fully live within 2 to 3 weeks. We handle the entire setup — website build, AI configuration, WhatsApp integration and phone assistant — so you don't need to do anything technical. We keep you updated throughout." },
     { q: 'What happens if the AI cannot answer a question?', a: "The AI is trained to handle the vast majority of enquiries for your business. In the rare case it encounters something outside its knowledge, it politely takes the contact's details and lets them know you will be in touch. No lead is ever lost." },
     { q: 'Is there a contract? Am I locked in?', a: "No long-term contracts. You pay a one-off build fee and a monthly management fee. You can cancel with 30 days notice at any time. We earn your business every month — not by locking you in." },
