@@ -1,0 +1,10 @@
+{
+  "name": "functions",
+  "description": "WVH Developments Firebase Functions",
+  "engines": { "node": "18" },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-functions": "^4.9.0"
+  },
+  "private": true
+}

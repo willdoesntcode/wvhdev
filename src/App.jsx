@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import * as THREE from 'three'
 import {
   Menu, X, ArrowRight, ChevronDown, Play,
   PhoneOff, Moon, ClipboardList, Zap,
@@ -9,11 +10,11 @@ import {
 } from 'lucide-react'
 import './App.css'
 
-/* ─── OpenAI system prompt ──────────────────────────────────────────────────── */
-const SYSTEM_PROMPT = `You are the AI assistant for WVH Developments Ltd, a UK-based AI automation agency that builds complete AI systems exclusively for mortgage brokers. You are friendly, professional and knowledgeable. Keep answers concise and helpful.
+/* ─── System prompt ──────────────────────────────────────────────────────────── */
+const SYSTEM_PROMPT = `You are the AI assistant for WVH Developments Ltd, a UK-based AI automation agency that builds complete AI systems for businesses of all types. You are friendly, professional and concise.
 
 SERVICES:
-We build: professional mortgage broker websites, AI website chatbots (24/7 lead qualification), AI phone assistants (answer every call 24/7), WhatsApp bots (handle WhatsApp enquiries automatically).
+We build: professional websites, AI website chatbots (24/7 lead qualification), AI phone assistants (answer every call 24/7), WhatsApp bots (handle WhatsApp enquiries automatically).
 
 PACKAGES:
 - Package 1: Website Only
@@ -24,30 +25,180 @@ PACKAGES:
 - Standalone: WhatsApp Bot only
 - Standalone: Phone Assistant only
 
-Pricing is tailored to each client based on their needs — direct anyone asking about pricing to get in touch via email or phone so we can put together a bespoke quote.
+Pricing is bespoke — direct anyone asking to email will@wvhdevelopments.com for a tailored quote.
 
 KEY FACTS:
-- Setup: 5–10 working days
+- Setup: 2-3 weeks
 - No long-term contracts — cancel with 30 days notice
 - No technical knowledge required — WVH handles everything
-- Works alongside your existing phone number via call forwarding — no number change needed
+- Works alongside existing phone number via call forwarding
 - Runs 24/7 including nights and weekends
-- Leads are qualified automatically and appointments booked into your calendar
 
 CONTACT: will@wvhdevelopments.com
 
-If someone wants to book a demo or get started, direct them to email will@wvhdevelopments.com. Never invent information not listed above.`
+If someone wants a demo or quote, tell them to email will@wvhdevelopments.com. Never invent information not listed above.`
 
-/* ─── Scroll fade-up animations ─────────────────────────────────────────────── */
+/* ─── Three.js hero canvas ───────────────────────────────────────────────────── */
+function HeroCanvas() {
+  const mountRef = useRef(null)
+
+  useEffect(() => {
+    const el = mountRef.current
+    if (!el) return
+    const w = el.clientWidth, h = el.clientHeight
+    const mobile = w < 768
+    const COUNT = mobile ? 65 : 120
+
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 1000)
+    camera.position.z = 9
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setSize(w, h)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setClearColor(0x000000, 0)
+    el.appendChild(renderer.domElement)
+
+    // Particles
+    const pos = new Float32Array(COUNT * 3)
+    const vel = new Float32Array(COUNT * 3)
+    const col = new Float32Array(COUNT * 3)
+    const cBlue = new THREE.Color(0x3B7DDD)
+    const cGold = new THREE.Color(0xD4A853)
+    const spread = mobile ? 12 : 20
+
+    for (let i = 0; i < COUNT; i++) {
+      pos[i*3]   = (Math.random() - 0.5) * spread
+      pos[i*3+1] = (Math.random() - 0.5) * spread * 0.65
+      pos[i*3+2] = (Math.random() - 0.5) * 5
+      vel[i*3]   = (Math.random() - 0.5) * 0.007
+      vel[i*3+1] = (Math.random() - 0.5) * 0.007
+      const c = Math.random() > 0.8 ? cGold : cBlue
+      col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b
+    }
+
+    const pGeo = new THREE.BufferGeometry()
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    pGeo.setAttribute('color', new THREE.BufferAttribute(col, 3))
+    const pMat = new THREE.PointsMaterial({ size: mobile ? 0.055 : 0.075, vertexColors: true, transparent: true, opacity: 0.9 })
+    scene.add(new THREE.Points(pGeo, pMat))
+
+    // Lines — pre-allocate buffer
+    const MAX_PAIRS = COUNT * (COUNT - 1) / 2
+    const lineBuf = new Float32Array(MAX_PAIRS * 6)
+    const lAttr = new THREE.BufferAttribute(lineBuf, 3)
+    lAttr.setUsage(THREE.DynamicDrawUsage)
+    const lGeo = new THREE.BufferGeometry()
+    lGeo.setAttribute('position', lAttr)
+    const lMat = new THREE.LineBasicMaterial({ color: 0x3B7DDD, transparent: true, opacity: 0.1 })
+    const lineObj = new THREE.LineSegments(lGeo, lMat)
+    scene.add(lineObj)
+
+    // Wireframe shapes
+    const shapes = [
+      { g: new THREE.IcosahedronGeometry(2.2, 0), p: [-9, 4, -4], r: [0.003, 0.005, 0] },
+      { g: new THREE.OctahedronGeometry(1.8, 0),  p: [9, -3, -3], r: [0.004, 0.003, 0.002] },
+      { g: new THREE.TetrahedronGeometry(2, 0),   p: [2, -6, -5], r: [0.002, 0.006, 0.001] },
+    ]
+    const meshes = shapes.map(s => {
+      const m = new THREE.Mesh(s.g, new THREE.MeshBasicMaterial({ color: 0x3B7DDD, wireframe: true, transparent: true, opacity: 0.04 }))
+      m.position.set(...s.p); m.userData.r = s.r
+      scene.add(m); return m
+    })
+
+    let mx = 0, my = 0
+    const onMove = e => { mx = (e.clientX / window.innerWidth - 0.5); my = -(e.clientY / window.innerHeight - 0.5) }
+    window.addEventListener('mousemove', onMove, { passive: true })
+    const onResize = () => {
+      const nw = el.clientWidth, nh = el.clientHeight
+      camera.aspect = nw / nh; camera.updateProjectionMatrix(); renderer.setSize(nw, nh)
+    }
+    window.addEventListener('resize', onResize, { passive: true })
+
+    const threshold = mobile ? 3.5 : 4.8
+    let raf
+    const animate = () => {
+      raf = requestAnimationFrame(animate)
+      // Move particles + bounce
+      for (let i = 0; i < COUNT; i++) {
+        pos[i*3]   += vel[i*3]
+        pos[i*3+1] += vel[i*3+1]
+        if (Math.abs(pos[i*3])   > spread * 0.5) vel[i*3]   *= -1
+        if (Math.abs(pos[i*3+1]) > spread * 0.35) vel[i*3+1] *= -1
+      }
+      pGeo.attributes.position.needsUpdate = true
+      // Lines
+      let lc = 0
+      for (let i = 0; i < COUNT; i++) {
+        for (let j = i + 1; j < COUNT; j++) {
+          const dx = pos[i*3]-pos[j*3], dy = pos[i*3+1]-pos[j*3+1]
+          if (Math.sqrt(dx*dx+dy*dy) < threshold) {
+            const idx = lc * 6
+            lineBuf[idx]=pos[i*3]; lineBuf[idx+1]=pos[i*3+1]; lineBuf[idx+2]=pos[i*3+2]
+            lineBuf[idx+3]=pos[j*3]; lineBuf[idx+4]=pos[j*3+1]; lineBuf[idx+5]=pos[j*3+2]
+            lc++
+          }
+        }
+      }
+      lGeo.attributes.position.needsUpdate = true
+      lGeo.setDrawRange(0, lc * 2)
+      // Wireframes
+      meshes.forEach(m => { m.rotation.x += m.userData.r[0]; m.rotation.y += m.userData.r[1]; m.rotation.z += m.userData.r[2] })
+      // Camera parallax
+      camera.position.x += (mx * 1.2 - camera.position.x) * 0.04
+      camera.position.y += (my * 0.8 - camera.position.y) * 0.04
+      camera.lookAt(scene.position)
+      renderer.render(scene, camera)
+    }
+    animate()
+
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('resize', onResize)
+      renderer.dispose()
+      if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement)
+    }
+  }, [])
+
+  return <div ref={mountRef} className="hero-canvas-mount" />
+}
+
+/* ─── Card tilt (applied globally to .tilt-card elements) ───────────────────── */
+function useTiltCards() {
+  useEffect(() => {
+    const cards = document.querySelectorAll('.tilt-card')
+    const cleanups = []
+    cards.forEach(card => {
+      const onMove = e => {
+        const r = card.getBoundingClientRect()
+        const x = (e.clientX - r.left) / r.width - 0.5
+        const y = (e.clientY - r.top) / r.height - 0.5
+        card.style.transform = `perspective(900px) rotateX(${-y * 11}deg) rotateY(${x * 11}deg) scale3d(1.03,1.03,1.03)`
+        card.style.transition = 'transform 0.08s ease'
+      }
+      const onLeave = () => {
+        card.style.transform = ''
+        card.style.transition = 'transform 0.5s cubic-bezier(0.23,1,0.32,1)'
+      }
+      card.addEventListener('mousemove', onMove)
+      card.addEventListener('mouseleave', onLeave)
+      cleanups.push(() => { card.removeEventListener('mousemove', onMove); card.removeEventListener('mouseleave', onLeave) })
+    })
+    return () => cleanups.forEach(fn => fn())
+  }, [])
+}
+
+/* ─── Scroll animations ──────────────────────────────────────────────────────── */
 function useScrollAnimations() {
   useEffect(() => {
-    const els = document.querySelectorAll('.fade-up')
-    const observer = new IntersectionObserver(
+    const els = document.querySelectorAll('.anim')
+    const obs = new IntersectionObserver(
       entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
-      { threshold: 0.06, rootMargin: '0px 0px -30px 0px' }
+      { threshold: 0.07, rootMargin: '0px 0px -30px 0px' }
     )
-    els.forEach(el => observer.observe(el))
-    return () => observer.disconnect()
+    els.forEach(el => obs.observe(el))
+    return () => obs.disconnect()
   }, [])
 }
 
@@ -55,13 +206,11 @@ function useScrollAnimations() {
 function Nav({ onOpenChat }) {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
-
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 40)
     window.addEventListener('scroll', h, { passive: true })
     return () => window.removeEventListener('scroll', h)
   }, [])
-
   const links = [
     { href: '#problem', label: 'Why WVH' },
     { href: '#solution', label: 'Solutions' },
@@ -69,34 +218,25 @@ function Nav({ onOpenChat }) {
     { href: '#packages', label: 'Packages' },
     { href: '#faq', label: 'FAQ' },
   ]
-
   return (
     <nav className={`nav${scrolled ? ' scrolled' : ''}`}>
       <div className="container">
         <div className="nav-inner">
           <a href="#" className="nav-brand">
             <div className="nav-brand-name">WVH <span>Developments</span></div>
-            <div className="nav-brand-tag">AI Automation for Mortgage Brokers</div>
+            <div className="nav-brand-tag">AI Automation Systems</div>
           </a>
           <div className="nav-links">
             {links.map(l => <a key={l.href} href={l.href}>{l.label}</a>)}
           </div>
           <div className="nav-right">
-            <button className="nav-cta" onClick={onOpenChat}>
-              Get a Free Demo <ArrowRight size={14} />
-            </button>
-            <button className="nav-mobile-btn" onClick={() => setOpen(o => !o)} aria-label="Menu">
-              {open ? <X size={22} /> : <Menu size={22} />}
-            </button>
+            <button className="nav-cta" onClick={onOpenChat}>Get a Free Demo <ArrowRight size={14} /></button>
+            <button className="nav-mobile-btn" onClick={() => setOpen(o => !o)}>{open ? <X size={22} /> : <Menu size={22} />}</button>
           </div>
         </div>
         <div className={`nav-mobile${open ? '' : ' closed'}`}>
-          {links.map(l => (
-            <a key={l.href} href={l.href} onClick={() => setOpen(false)}>{l.label}</a>
-          ))}
-          <button className="nav-cta" onClick={() => { setOpen(false); onOpenChat() }}>
-            Get a Free Demo <ArrowRight size={14} />
-          </button>
+          {links.map(l => <a key={l.href} href={l.href} onClick={() => setOpen(false)}>{l.label}</a>)}
+          <button className="nav-cta" onClick={() => { setOpen(false); onOpenChat() }}>Get a Free Demo <ArrowRight size={14} /></button>
         </div>
       </div>
     </nav>
@@ -107,89 +247,60 @@ function Nav({ onOpenChat }) {
 function Hero({ onOpenChat }) {
   return (
     <section className="hero" id="hero">
-      <div className="hero-bg">
-        <div className="hero-grid" />
-        <div className="hero-blob hero-blob-1" />
-        <div className="hero-blob hero-blob-2" />
-        <div className="hero-blob hero-blob-3" />
-        <div className="hero-shapes">
-          {[1,2,3,4,5,6].map(n => <div key={n} className={`shape shape-${n}`} />)}
+      <HeroCanvas />
+      <div className="hero-overlay" />
+      <div className="container hero-content-wrap">
+        <div className="hero-content">
+          <div className="hero-eyebrow anim">
+            <span className="hero-eyebrow-dot" />
+            AI Automation — Built For Your Business
+          </div>
+          <h1 className="hero-title anim d1">
+            Never Miss<br />
+            <span className="accent-gold">Another Lead.</span><br />
+            <span className="accent-blue">Ever Again.</span>
+          </h1>
+          <p className="hero-sub anim d2">
+            We build complete AI systems — chatbots, WhatsApp bots, AI phone assistants and professional websites
+            that work <strong>24 hours a day, 7 days a week</strong>, capturing and qualifying every enquiry automatically.
+          </p>
+          <div className="hero-actions anim d3">
+            <button className="btn-primary" onClick={onOpenChat}>Book Your Free Demo <ArrowRight size={16} /></button>
+            <a href="#solution" className="btn-secondary">See What We Build</a>
+          </div>
+          <div className="hero-badges anim d4">
+            <div className="hero-badge"><Check size={13} /> No contracts</div>
+            <div className="hero-badge"><Check size={13} /> Live in 2–3 weeks</div>
+            <div className="hero-badge"><Check size={13} /> Fully managed</div>
+          </div>
         </div>
       </div>
-      <div className="container">
-        <div className="hero-content">
-          <div className="hero-eyebrow fade-up">
-            <span className="hero-eyebrow-dot" />
-            AI Systems Built Exclusively for UK Mortgage Brokers
-          </div>
-          <h1 className="hero-title fade-up d1">
-            Stop Missing Leads.<br />
-            <span className="accent-gold">Start Closing</span> Every{' '}
-            <span className="accent-blue">Single One.</span>
-          </h1>
-          <p className="hero-sub fade-up d2">
-            We build complete AI systems for mortgage brokers — professional websites, AI chatbots,
-            WhatsApp bots and AI phone assistants working <strong>24 hours a day, 7 days a week</strong>,
-            capturing and qualifying every enquiry automatically. You just show up to the appointments.
-          </p>
-          <div className="hero-actions fade-up d3">
-            <button className="btn-primary" onClick={onOpenChat}>
-              Book Your Free Demo <ArrowRight size={16} />
-            </button>
-            <a href="#solution" className="btn-secondary">
-              See How It Works
-            </a>
-          </div>
-        </div>
+      <div className="hero-scroll-hint">
+        <div className="hero-scroll-line" />
       </div>
     </section>
-  )
-}
-
-/* ─── Trust Bar ──────────────────────────────────────────────────────────────── */
-function TrustBar() {
-  const stats = [
-    { icon: <Users size={22} />, num: '40+', label: 'Mortgage Brokers Using the System' },
-    { icon: <Bot size={22} />, num: '120+', label: 'AI Systems Running 24/7' },
-    { icon: <TrendingUp size={22} />, num: '3,800+', label: 'Leads Captured Automatically' },
-    { icon: <Clock size={22} />, num: '100%', label: 'Uptime. Every Call Answered.' },
-  ]
-  return (
-    <div className="trust-bar">
-      <div className="container">
-        <div className="trust-inner">
-          {stats.map((s, i) => (
-            <div className={`trust-item fade-up d${i + 1}`} key={i}>
-              <div className="trust-icon">{s.icon}</div>
-              <div className="trust-num">{s.num}</div>
-              <div className="trust-label">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   )
 }
 
 /* ─── Problem ────────────────────────────────────────────────────────────────── */
 function Problem() {
   const cards = [
-    { icon: <PhoneOff size={22} />, title: 'You miss calls while on appointments', desc: "Every time you're with a client, your phone rings out. That lead just called your competitor and got an answer immediately." },
-    { icon: <Moon size={22} />, title: 'Enquiries come in late at night', desc: "People research mortgages at 10pm. When they contact you and hear silence, they move on. By morning, the lead is gone." },
-    { icon: <ClipboardList size={22} />, title: "You're manually chasing every lead", desc: "Hours every week on follow-up calls, texts and emails. You're doing admin instead of advising clients and closing deals." },
-    { icon: <Zap size={22} />, title: 'Faster brokers are stealing your clients', desc: "Speed wins in mortgage broking. If a lead gets a response in seconds from someone else, they go with them. Simple." },
+    { icon: <PhoneOff size={22} />, title: 'You miss calls while you are busy', desc: "Every time you're with a client or away from your desk, your phone rings out. That lead just called someone else and got an answer." },
+    { icon: <Moon size={22} />, title: 'Enquiries come in outside business hours', desc: "People research at 10pm. When they contact you and hear nothing, they move on. By morning the lead is gone and you never knew about it." },
+    { icon: <ClipboardList size={22} />, title: "You're manually following up every lead", desc: "Hours every week spent on follow-up calls, emails and texts. You're doing admin instead of actually growing your business." },
+    { icon: <Zap size={22} />, title: 'Faster competitors are winning your clients', desc: "Speed wins. If a lead gets a response in seconds from someone else, they go with them. It really is that simple." },
   ]
   return (
     <section className="problem-section" id="problem">
       <div className="container">
         <div className="problem-header">
-          <div className="section-label fade-up">The Real Problem</div>
-          <h2 className="section-heading fade-up d1">You Are Losing Leads<br />Every Single Day</h2>
-          <p className="section-sub fade-up d2">If you are not responding to enquiries within minutes, around the clock, you are leaving thousands of pounds on the table every month.</p>
+          <div className="section-label anim">The Real Problem</div>
+          <h2 className="section-heading anim d1">You Are Losing Leads<br />Every Single Day</h2>
+          <p className="section-sub anim d2">If you are not responding to enquiries within minutes, around the clock, you are leaving serious money on the table every month.</p>
         </div>
         <div className="problem-grid">
           {cards.map((c, i) => (
-            <div className={`problem-card fade-up d${i + 1}`} key={i}>
+            <div className={`problem-card tilt-card anim d${i+1}`} key={i}>
               <div className="problem-icon-wrap">{c.icon}</div>
               <h3>{c.title}</h3>
               <p>{c.desc}</p>
@@ -204,22 +315,22 @@ function Problem() {
 /* ─── Solution ───────────────────────────────────────────────────────────────── */
 function Solution() {
   const cards = [
-    { icon: <MessageSquare size={24} />, title: 'AI Website Chatbot', desc: "Embedded on your website, our AI chatbot greets every visitor, answers questions, qualifies their situation and collects their details — all day, all night, every day of the year.", tag: 'Qualifies Every Lead' },
-    { icon: <Phone size={24} />, title: 'AI Phone Assistant', desc: "Answers every call you miss, 24/7. Takes details, answers common questions, qualifies the enquiry and books into your calendar automatically. No voicemail. No missed opportunity.", tag: 'Answers Every Call' },
-    { icon: <MessageCircle size={24} />, title: 'WhatsApp Bot', desc: "The channel your clients actually prefer. Our WhatsApp bot handles inbound messages instantly — qualifying leads, answering FAQs and capturing contact details while you're with other clients.", tag: 'WhatsApp 24/7' },
-    { icon: <Globe size={24} />, title: 'Professional Website', desc: "A fast, mobile-optimised, conversion-focused website built specifically for mortgage brokers. Designed to build trust, generate enquiries and position you as the credible, standout choice.", tag: 'Built to Convert' },
+    { icon: <MessageSquare size={24} />, title: 'AI Website Chatbot', desc: "Embedded on your website, our AI chatbot greets every visitor, answers questions, qualifies leads and captures their details — 24/7, every day of the year.", tag: 'Qualifies Every Lead' },
+    { icon: <Phone size={24} />, title: 'AI Phone Assistant', desc: "Answers every call you miss, 24/7. Takes details, answers questions, qualifies the lead and books appointments into your calendar automatically.", tag: 'Answers Every Call' },
+    { icon: <MessageCircle size={24} />, title: 'WhatsApp Bot', desc: "Handles inbound WhatsApp messages instantly — qualifying leads, answering questions and capturing contact details while you focus on your business.", tag: 'WhatsApp 24/7' },
+    { icon: <Globe size={24} />, title: 'Professional Website', desc: "A fast, mobile-optimised, conversion-focused website built to represent your business at its best and turn visitors into genuine enquiries.", tag: 'Built to Convert' },
   ]
   return (
     <section className="solution-section" id="solution">
       <div className="container">
         <div className="solution-header">
-          <div className="section-label fade-up">The WVH System</div>
-          <h2 className="section-heading fade-up d1">Your Complete AI System,<br />Built and Managed For You</h2>
-          <p className="section-sub fade-up d2">WVH Developments builds a fully integrated AI ecosystem tailored to your brokerage. Every enquiry gets captured, qualified and followed up — automatically.</p>
+          <div className="section-label anim">The WVH System</div>
+          <h2 className="section-heading anim d1">Your Complete AI System,<br />Built and Managed For You</h2>
+          <p className="section-sub anim d2">We build a fully integrated AI ecosystem tailored to your business. Every enquiry gets captured, qualified and followed up — automatically.</p>
         </div>
         <div className="solution-grid">
           {cards.map((c, i) => (
-            <div className={`solution-card fade-up d${i + 1}`} key={i}>
+            <div className={`solution-card tilt-card anim d${i+1}`} key={i}>
               <div className="solution-icon-wrap">{c.icon}</div>
               <h3>{c.title}</h3>
               <p>{c.desc}</p>
@@ -235,22 +346,22 @@ function Solution() {
 /* ─── How It Works ───────────────────────────────────────────────────────────── */
 function HowItWorks() {
   const steps = [
-    { icon: <Settings size={28} />, num: '01', title: 'We Build Your Complete AI System', desc: 'We design and build your entire AI ecosystem from scratch — chatbot, phone assistant, WhatsApp bot and website, all tailored to your brokerage.' },
-    { icon: <Link2 size={28} />, num: '02', title: 'We Connect Everything', desc: "We integrate your AI with your existing phone number, WhatsApp Business account and website. No technical work required from you." },
-    { icon: <TrendingUp size={28} />, num: '03', title: 'Leads Flow In Automatically', desc: 'Your AI handles every enquiry — qualifying leads, collecting details and booking appointments into your calendar around the clock.' },
-    { icon: <CalendarCheck size={28} />, num: '04', title: 'You Just Show Up', desc: 'Wake up to qualified appointments already in your diary. Your only job is to show up and give great advice. The AI handles everything else.' },
+    { icon: <Settings size={28} />, num: '01', title: 'We Build Your System', desc: 'We design and build your entire AI ecosystem from scratch — tailored specifically to your business, your brand and your customers.' },
+    { icon: <Link2 size={28} />, num: '02', title: 'We Connect Everything', desc: "We integrate your AI with your phone, WhatsApp and website. No technical work required from you at any point." },
+    { icon: <TrendingUp size={28} />, num: '03', title: 'Leads Flow Automatically', desc: 'Your AI handles every enquiry — qualifying leads, collecting details and booking appointments into your calendar around the clock.' },
+    { icon: <CalendarCheck size={28} />, num: '04', title: 'You Just Show Up', desc: 'Wake up to qualified leads already in your inbox. Your only job is to show up and close. The AI handles everything else.' },
   ]
   return (
     <section className="how-section" id="how">
       <div className="container">
         <div className="how-header">
-          <div className="section-label fade-up">Simple Process</div>
-          <h2 className="section-heading fade-up d1">Up and Running<br />in Days, Not Months</h2>
-          <p className="section-sub fade-up d2">We handle every step of the setup. You will be live with a fully operational AI system faster than you think.</p>
+          <div className="section-label anim">Simple Process</div>
+          <h2 className="section-heading anim d1">Live in 2–3 Weeks,<br />Running Forever</h2>
+          <p className="section-sub anim d2">We handle every single step. You will be live faster than you think.</p>
         </div>
         <div className="how-steps">
           {steps.map((s, i) => (
-            <div className={`how-step fade-up d${i + 1}`} key={i}>
+            <div className={`how-step tilt-card anim d${i+1}`} key={i}>
               <div className="how-step-num">
                 {s.icon}
                 <span className="how-num-label">{s.num}</span>
@@ -271,16 +382,16 @@ function DemoVideo() {
     <section className="demo-section" id="demo">
       <div className="container">
         <div className="demo-header">
-          <div className="section-label fade-up">Live Demos</div>
-          <h2 className="section-heading fade-up d1">See It In Action</h2>
+          <div className="section-label anim">Live Demos</div>
+          <h2 className="section-heading anim d1">See It In Action</h2>
         </div>
-        <p className="demo-desc fade-up d2">These are real demos of the actual WVH AI system in use. Watch how it handles real enquiries — qualifying leads and booking appointments without any human involvement.</p>
+        <p className="demo-desc anim d2">Real demos of the actual WVH AI system. Watch how it handles enquiries — qualifying leads and booking appointments without any human involvement.</p>
         <div className="demo-grid">
           {[
-            { title: 'WhatsApp Bot Demo', desc: 'Watch our WhatsApp bot qualify a live mortgage enquiry from first message to booked appointment.', label: 'WHATSAPP BOT' },
-            { title: 'AI Phone Assistant Demo', desc: 'Hear how our AI phone assistant handles a cold inbound call — taking details, answering questions and booking the appointment.', label: 'PHONE ASSISTANT' },
+            { title: 'WhatsApp Bot Demo', desc: 'Watch the WhatsApp bot handle a live enquiry from first message to captured lead.', label: 'WHATSAPP BOT' },
+            { title: 'AI Phone Assistant Demo', desc: 'Hear the AI phone assistant handle a real inbound call — taking details and qualifying the lead.', label: 'PHONE ASSISTANT' },
           ].map((d, i) => (
-            <div className={`demo-card fade-up d${i + 1}`} key={i}>
+            <div className={`demo-card tilt-card anim d${i+1}`} key={i}>
               <div className="demo-video-wrap">
                 <div className="demo-video-placeholder">
                   <div className="demo-play-btn"><Play size={24} fill="currentColor" /></div>
@@ -303,10 +414,10 @@ function DemoVideo() {
 /* ─── Packages ───────────────────────────────────────────────────────────────── */
 function Packages({ onOpenChat }) {
   const main = [
-    { pkg: 'Package 1', title: 'Website Only', features: ['Professional mortgage broker website', 'Mobile-optimised & fast loading', 'Built to convert visitors to enquiries', 'Monthly hosting & maintenance', 'Regular updates & support'], popular: false },
-    { pkg: 'Package 2', title: 'Website + AI Chatbot', features: ['Everything in Package 1', 'AI website chatbot installed', '24/7 lead qualification on your site', 'Automatic lead capture & notifications', 'Customised to your brokerage'], popular: false },
-    { pkg: 'Package 3', title: 'Website + Chatbot + Phone AI', features: ['Everything in Package 2', 'AI phone assistant (24/7 call answering)', 'Missed call handling & booking', 'Appointment booking to your calendar', 'Full monthly management included'], popular: false },
-    { pkg: 'Package 4', title: 'Full Stack — Everything', features: ['Professional website', 'AI website chatbot', 'AI phone assistant (24/7)', 'WhatsApp bot (24/7)', 'Complete lead capture ecosystem', 'Priority support & management'], popular: true },
+    { pkg: 'Package 1', title: 'Website Only', features: ['Professional business website', 'Mobile-optimised & fast loading', 'Built to convert visitors to enquiries', 'Monthly hosting & maintenance', 'Ongoing updates & support'], popular: false },
+    { pkg: 'Package 2', title: 'Website + AI Chatbot', features: ['Everything in Package 1', 'AI website chatbot installed', '24/7 lead qualification on your site', 'Automatic lead capture & notifications', 'Customised to your business'], popular: false },
+    { pkg: 'Package 3', title: 'Website + Chatbot + Phone AI', features: ['Everything in Package 2', 'AI phone assistant (24/7)', 'Missed call handling & qualification', 'Appointment booking to your calendar', 'Full monthly management'], popular: false },
+    { pkg: 'Package 4', title: 'Full Stack — Everything', features: ['Professional website', 'AI website chatbot', 'AI phone assistant (24/7)', 'WhatsApp bot (24/7)', 'Complete AI lead capture system', 'Priority support & management'], popular: true },
   ]
   const standalone = [
     { title: 'WhatsApp Bot + Phone Assistant' },
@@ -317,13 +428,13 @@ function Packages({ onOpenChat }) {
     <section className="packages-section" id="packages">
       <div className="container">
         <div className="packages-header">
-          <div className="section-label fade-up">Packages</div>
-          <h2 className="section-heading fade-up d1">Everything Built and Managed For You</h2>
+          <div className="section-label anim">Packages</div>
+          <h2 className="section-heading anim d1">Everything Built and Managed For You</h2>
         </div>
-        <p className="section-sub packages-sub fade-up d2">Choose the package that fits your brokerage. Every system is fully built and managed by WVH Developments Ltd — no technical knowledge required. Get in touch for a bespoke quote.</p>
+        <p className="section-sub packages-sub anim d2">Choose the package that fits your business. Every system is fully built and managed by WVH Developments Ltd — get in touch for a bespoke quote.</p>
         <div className="packages-main">
           {main.map((p, i) => (
-            <div className={`pkg-card fade-up d${i + 1}${p.popular ? ' popular' : ''}`} key={i}>
+            <div className={`pkg-card tilt-card anim d${i+1}${p.popular ? ' popular' : ''}`} key={i}>
               {p.popular && <div className="pkg-popular-badge">Most Popular</div>}
               <div className="pkg-name">{p.pkg}</div>
               <div className="pkg-title">{p.title}</div>
@@ -334,22 +445,18 @@ function Packages({ onOpenChat }) {
               <div className="pkg-divider" />
               <div className="pkg-features">
                 {p.features.map((f, fi) => (
-                  <div className="pkg-feature" key={fi}>
-                    <Check size={14} className="pkg-check" />{f}
-                  </div>
+                  <div className="pkg-feature" key={fi}><Check size={14} className="pkg-check" />{f}</div>
                 ))}
               </div>
-              <button className="pkg-cta" onClick={onOpenChat}>
-                Get Started <ArrowRight size={14} />
-              </button>
+              <button className="pkg-cta" onClick={onOpenChat}>Get Started <ArrowRight size={14} /></button>
             </div>
           ))}
         </div>
-        <div className="packages-standalone fade-up">
+        <div className="packages-standalone anim">
           <h3>Standalone Add-Ons</h3>
           <div className="standalone-grid">
             {standalone.map((s, i) => (
-              <div className="standalone-card" key={i}>
+              <div className="standalone-card tilt-card" key={i}>
                 <h4>{s.title}</h4>
                 <div className="standalone-quote">Bespoke Pricing</div>
                 <div className="standalone-quote-sub">Get in touch for a tailored quote</div>
@@ -357,9 +464,9 @@ function Packages({ onOpenChat }) {
             ))}
           </div>
         </div>
-        <div className="packages-note fade-up">
+        <div className="packages-note anim">
           <Shield size={14} style={{display:'inline',marginRight:'6px',verticalAlign:'middle'}} />
-          <strong>All systems are fully built and managed by WVH Developments Ltd.</strong>{' '}No technical knowledge required. We handle setup, maintenance and ongoing management.
+          <strong>All systems are fully built and managed by WVH Developments Ltd.</strong>{' '}No technical knowledge required.
         </div>
       </div>
     </section>
@@ -369,32 +476,37 @@ function Packages({ onOpenChat }) {
 /* ─── Testimonials ───────────────────────────────────────────────────────────── */
 function Testimonials() {
   const reviews = [
-    { text: "I was genuinely sceptical about AI handling my client enquiries. Within the first week, the phone assistant had booked three appointments I would have completely missed because I was on calls. The WhatsApp bot alone has transformed how I manage leads. I cannot imagine going back.", name: 'Jack Neale', role: 'Independent Mortgage Broker', initials: 'JN' },
-    { text: "WVH built our full AI system and it was seamless from start to finish. The website is exceptional and the chatbot captures leads we would never have seen before — evenings, weekends, 2am. Our enquiry volume has increased significantly and we are spending less time chasing and more time advising.", name: 'Rite Torc Services', role: 'Mortgage Brokerage, South East England', initials: 'RT' }
+    {
+      text: "The WhatsApp bot has already started picking up enquiries I would have missed while on calls or out of the office. Having something automatically respond and collect details at any hour is exactly what I needed — excited to see where this goes.",
+      name: 'Jack Neale',
+      role: 'Mortgage Broker',
+      initials: 'JN'
+    },
+    {
+      text: "WVH completely transformed our online presence. The website they built is sharp, professional and looks unlike anything we had before. The whole process was effortless and the results speak for themselves.",
+      name: 'Rite Torc Services',
+      role: 'Client, South East England',
+      initials: 'RT'
+    }
   ]
   return (
     <section className="testimonials-section" id="testimonials">
       <div className="container">
         <div className="testimonials-header">
-          <div className="section-label fade-up">Client Results</div>
-          <h2 className="section-heading fade-up d1">Brokers Who Made the Switch</h2>
+          <div className="section-label anim">Results</div>
+          <h2 className="section-heading anim d1">What Our Clients Say</h2>
         </div>
         <div className="testimonials-grid">
           {reviews.map((r, i) => (
-            <div className={`testimonial-card fade-up d${i + 1}`} key={i}>
+            <div className={`testimonial-card tilt-card anim d${i+1}`} key={i}>
               <div className="testimonial-quote-icon">
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="currentColor"><path d="M14 24h-4c0-5.5 4.5-10 10-10v4c-3.3 0-6 2.7-6 6zm16 0h-4c0-5.5 4.5-10 10-10v4c-3.3 0-6 2.7-6 6z" opacity="0.4"/></svg>
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="currentColor"><path d="M14 24h-4c0-5.5 4.5-10 10-10v4c-3.3 0-6 2.7-6 6zm16 0h-4c0-5.5 4.5-10 10-10v4c-3.3 0-6 2.7-6 6z" opacity="0.3"/></svg>
               </div>
-              <div className="testimonial-stars">
-                {[...Array(5)].map((_, si) => <Star key={si} size={16} />)}
-              </div>
+              <div className="testimonial-stars">{[...Array(5)].map((_, si) => <Star key={si} size={16} />)}</div>
               <p className="testimonial-text">"{r.text}"</p>
               <div className="testimonial-author">
                 <div className="testimonial-avatar">{r.initials}</div>
-                <div>
-                  <div className="testimonial-name">{r.name}</div>
-                  <div className="testimonial-role">{r.role}</div>
-                </div>
+                <div><div className="testimonial-name">{r.name}</div><div className="testimonial-role">{r.role}</div></div>
               </div>
             </div>
           ))}
@@ -404,33 +516,30 @@ function Testimonials() {
   )
 }
 
-/* ─── FAQ — FIXED: fade-up is on a wrapper div, not the element that gets ────── */
-/* ─── 'open' added to its class. React no longer wipes the 'visible' class. ─── */
+/* ─── FAQ ────────────────────────────────────────────────────────────────────── */
 function FAQ() {
   const [open, setOpen] = useState(null)
   const items = [
-    { q: 'Do I need to change my existing phone number?', a: "Not at all. Our AI phone assistant works alongside your existing number. We set up call forwarding so that when you're unavailable, calls are seamlessly handled by the AI. Your clients always call the same number they already know." },
-    { q: 'How long does it take to set everything up?', a: "Most clients are fully live within 5 to 10 working days. We handle the entire setup — website build, AI configuration, WhatsApp integration and phone assistant — so you don't need to do anything technical. We keep you updated throughout." },
-    { q: 'What happens if the AI cannot answer a question?', a: "The AI is trained to handle the vast majority of mortgage enquiry questions. In the rare case it encounters something outside its knowledge, it politely takes the client's details and lets them know you will be in touch personally. No lead is ever lost or left frustrated." },
-    { q: 'Is there a contract? Am I locked in?', a: "No long-term contracts. You pay a one-off build fee and then a monthly management fee. You can cancel with 30 days notice at any time. We believe in earning your business every month — not locking you in." },
-    { q: 'Can I see a demo before I commit?', a: "Absolutely, and we actively encourage it. Chat with our AI assistant right now, or contact us directly. We will walk you through the full system live, show you exactly how it handles real enquiries, and answer every question you have. No obligation whatsoever." },
-    { q: 'What kind of leads will the AI capture?', a: "The system captures any mortgage-related enquiry — first-time buyers, remortgages, buy-to-let, self-employed applicants, debt consolidation and more. The AI qualifies each lead based on your preferences and collects the information you need before your call." },
+    { q: 'Do I need to change my existing phone number?', a: "Not at all. Our AI phone assistant works alongside your existing number via call forwarding. When you are unavailable, calls are handled automatically. Your clients always call the same number." },
+    { q: 'How long does it take to set everything up?', a: "Most clients are fully live within 2 to 3 weeks. We handle the entire setup — website build, AI configuration, WhatsApp integration and phone assistant — so you don't need to do anything technical. We keep you updated throughout." },
+    { q: 'What happens if the AI cannot answer a question?', a: "The AI is trained to handle the vast majority of enquiries for your business. In the rare case it encounters something outside its knowledge, it politely takes the contact's details and lets them know you will be in touch. No lead is ever lost." },
+    { q: 'Is there a contract? Am I locked in?', a: "No long-term contracts. You pay a one-off build fee and a monthly management fee. You can cancel with 30 days notice at any time. We earn your business every month — not by locking you in." },
+    { q: 'Can I see a demo before I commit?', a: "Absolutely. Chat with our AI assistant right now, or get in touch directly. We will walk you through the full system live and answer every question — no obligation." },
+    { q: 'Does this work for any type of business?', a: "Yes. We have built systems for businesses across a range of industries. If your business receives enquiries — by phone, WhatsApp, or website — our AI system will capture and qualify them automatically." },
   ]
   return (
     <section className="faq-section" id="faq">
       <div className="container">
         <div className="faq-header">
-          <div className="section-label fade-up">Common Questions</div>
-          <h2 className="section-heading fade-up d1">Everything You Need to Know</h2>
+          <div className="section-label anim">Questions</div>
+          <h2 className="section-heading anim d1">Everything You Need to Know</h2>
         </div>
         <div className="faq-list">
           {items.map((item, i) => (
-            /* The fade-up wrapper never changes class — React only touches the inner faq-item */
-            <div className={`fade-up d${Math.min(i + 1, 5)}`} key={i}>
+            <div className={`anim d${Math.min(i+1,5)}`} key={i}>
               <div className={`faq-item${open === i ? ' open' : ''}`}>
                 <button className="faq-question" onClick={() => setOpen(open === i ? null : i)}>
-                  {item.q}
-                  <ChevronDown size={18} className="faq-chevron" />
+                  {item.q}<ChevronDown size={18} className="faq-chevron" />
                 </button>
                 <div className="faq-answer" style={{ maxHeight: open === i ? '400px' : '0' }}>
                   <div className="faq-answer-inner">{item.a}</div>
@@ -444,52 +553,39 @@ function FAQ() {
   )
 }
 
-/* ─── Contact — no form, everything through the AI chatbot ──────────────────── */
+/* ─── Contact ────────────────────────────────────────────────────────────────── */
 function Contact({ onOpenChat }) {
   return (
     <section className="contact-section" id="contact">
       <div className="container">
         <div className="contact-header">
-          <div className="section-label fade-up">Get Started</div>
-          <h2 className="section-heading fade-up d1">Ready to Stop Missing Leads?</h2>
-          <p className="section-sub fade-up d2" style={{ margin: '0 auto' }}>
-            Chat with our AI assistant right now. Ask about pricing, how it works,
-            what's included — it knows everything. Or reach out directly.
-          </p>
+          <div className="section-label anim">Get Started</div>
+          <h2 className="section-heading anim d1">Ready to Automate Your Business?</h2>
+          <p className="section-sub anim d2" style={{ margin: '0 auto' }}>Chat with our AI assistant right now, or reach out directly. We respond within 24 hours.</p>
         </div>
-
-        <div className="contact-cta-row fade-up d3">
-          <div className="contact-ai-card">
-            <div className="contact-ai-icon">
-              <Sparkles size={28} />
-            </div>
+        <div className="contact-cta-row anim d3">
+          <div className="contact-ai-card tilt-card">
+            <div className="contact-ai-icon"><Sparkles size={28} /></div>
             <h3>Chat With Our AI Now</h3>
-            <p>Ask anything — pricing, setup, how the phone assistant works, what's included in each package. Get an instant answer without waiting.</p>
-            <button className="btn-primary contact-chat-btn" onClick={onOpenChat}>
-              <Bot size={18} /> Start a Conversation
-            </button>
+            <p>Ask anything — what's included, how it works, how long setup takes. Get an instant answer.</p>
+            <button className="btn-primary contact-chat-btn" onClick={onOpenChat}><Bot size={18} /> Start a Conversation</button>
           </div>
-
           <div className="contact-or">
-            <div className="contact-or-line" />
-            <span>or reach us directly</span>
-            <div className="contact-or-line" />
+            <div className="contact-or-line" /><span>or reach us directly</span><div className="contact-or-line" />
           </div>
-
           <div className="contact-details-grid">
             {[
               { icon: <Mail size={18} />, label: 'Email', value: 'will@wvhdevelopments.com', href: 'mailto:will@wvhdevelopments.com' },
               { icon: <MapPin size={18} />, label: 'Based in', value: 'England & Wales', href: null },
               { icon: <Clock size={18} />, label: 'Response time', value: 'Within 24 hours', href: null },
             ].map((d, i) => (
-              <div className="contact-detail-card" key={i}>
+              <div className="contact-detail-card tilt-card" key={i}>
                 <div className="contact-detail-icon">{d.icon}</div>
                 <div>
                   <div className="contact-detail-label">{d.label}</div>
                   {d.href
                     ? <a className="contact-detail-value contact-detail-link" href={d.href}>{d.value}</a>
-                    : <div className="contact-detail-value">{d.value}</div>
-                  }
+                    : <div className="contact-detail-value">{d.value}</div>}
                 </div>
               </div>
             ))}
@@ -500,10 +596,10 @@ function Contact({ onOpenChat }) {
   )
 }
 
-/* ─── AI Chatbot ─────────────────────────────────────────────────────────────── */
+/* ─── Chatbot ────────────────────────────────────────────────────────────────── */
 function Chatbot({ isOpen, setIsOpen }) {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: "Hi! I'm the WVH AI assistant. I can tell you everything about our AI systems for mortgage brokers — pricing, how it works, setup time, what's included. What would you like to know?" }
+    { role: 'assistant', content: "Hi! I'm the WVH AI assistant. Ask me anything about our packages, how it works, setup time, or what's included. What would you like to know?" }
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -512,16 +608,11 @@ function Chatbot({ isOpen, setIsOpen }) {
   const inputRef = useRef(null)
 
   useEffect(() => {
-    if (isOpen) {
-      setHasNotif(false)
-      setTimeout(() => inputRef.current?.focus(), 300)
-    }
+    if (isOpen) { setHasNotif(false); setTimeout(() => inputRef.current?.focus(), 300) }
   }, [isOpen])
 
   useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isOpen])
 
   const send = async () => {
@@ -532,100 +623,63 @@ function Chatbot({ isOpen, setIsOpen }) {
     setMessages(newMessages)
     setInput('')
     setLoading(true)
-
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...newMessages]
-        })
+        body: JSON.stringify({ messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...newMessages] })
       })
       const data = await res.json()
-      const reply = data.choices?.[0]?.message?.content
-        ?? "Sorry, I couldn't get a response right now. Please email us at will@wvhdevelopments.com"
+      const reply = data.choices?.[0]?.message?.content ?? "Sorry, I couldn't get a response. Please email will@wvhdevelopments.com"
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having a technical issue right now. Please email will@wvhdevelopments.com and we'll get back to you shortly." }])
+      setMessages(prev => [...prev, { role: 'assistant', content: "I'm having a technical issue. Please email will@wvhdevelopments.com and we'll get back to you." }])
     }
     setLoading(false)
   }
 
-  const handleKey = e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-  }
-
-  const suggestions = ["What's included in Package 4?", "How long does setup take?", "Do I need to change my phone number?", "How does the WhatsApp bot work?"]
+  const handleKey = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
+  const suggestions = ["What's included in Package 4?", "How long does setup take?", "Do I need to change my phone number?"]
 
   return (
     <>
-      {/* Chat Window */}
-      <div className={`chatbot-window${isOpen ? ' open' : ''}`} role="dialog" aria-label="WVH AI Assistant">
-        {/* Header */}
+      <div className={`chatbot-window${isOpen ? ' open' : ''}`}>
         <div className="chatbot-header">
           <div className="chatbot-avatar"><Bot size={20} /></div>
           <div className="chatbot-header-info">
             <div className="chatbot-header-name">WVH AI Assistant</div>
-            <div className="chatbot-header-status">
-              <span className="live-dot" /> Online now
-            </div>
+            <div className="chatbot-header-status"><span className="live-dot" /> Online now</div>
           </div>
-          <button className="chatbot-close" onClick={() => setIsOpen(false)} aria-label="Close chat">
-            <X size={18} />
-          </button>
+          <button className="chatbot-close" onClick={() => setIsOpen(false)}><X size={18} /></button>
         </div>
-
-        {/* Messages */}
         <div className="chatbot-messages">
           {messages.map((m, i) => (
             <div className={`chatbot-msg ${m.role}`} key={i}>
-              {m.role === 'assistant' && (
-                <div className="chatbot-msg-icon"><Bot size={14} /></div>
-              )}
+              {m.role === 'assistant' && <div className="chatbot-msg-icon"><Bot size={14} /></div>}
               <div className="chatbot-msg-bubble">{m.content}</div>
             </div>
           ))}
           {loading && (
             <div className="chatbot-msg assistant">
               <div className="chatbot-msg-icon"><Bot size={14} /></div>
-              <div className="chatbot-typing">
-                <span /><span /><span />
-              </div>
+              <div className="chatbot-typing"><span /><span /><span /></div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
-
-        {/* Suggestions (only show at start) */}
         {messages.length === 1 && (
           <div className="chatbot-suggestions">
             {suggestions.map((s, i) => (
-              <button key={i} className="chatbot-suggestion" onClick={() => { setInput(s); inputRef.current?.focus() }}>
-                {s}
-              </button>
+              <button key={i} className="chatbot-suggestion" onClick={() => { setInput(s); inputRef.current?.focus() }}>{s}</button>
             ))}
           </div>
         )}
-
-        {/* Input */}
         <div className="chatbot-input-area">
-          <textarea
-            ref={inputRef}
-            className="chatbot-input"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="Ask me anything..."
-            rows={1}
-          />
-          <button className="chatbot-send" onClick={send} disabled={!input.trim() || loading} aria-label="Send">
-            <Send size={16} />
-          </button>
+          <textarea ref={inputRef} className="chatbot-input" value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey} placeholder="Ask me anything..." rows={1} />
+          <button className="chatbot-send" onClick={send} disabled={!input.trim() || loading}><Send size={16} /></button>
         </div>
       </div>
-
-      {/* Bubble */}
-      <button className="chatbot-bubble" onClick={() => setIsOpen(o => !o)} aria-label="Open chat">
+      <button className="chatbot-bubble" onClick={() => setIsOpen(o => !o)}>
         {isOpen ? <X size={24} /> : <Bot size={24} />}
         {hasNotif && !isOpen && <span className="chatbot-notif">1</span>}
       </button>
@@ -635,27 +689,23 @@ function Chatbot({ isOpen, setIsOpen }) {
 
 /* ─── Footer ─────────────────────────────────────────────────────────────────── */
 function Footer() {
-  const nav = ['#problem', '#solution', '#how', '#packages', '#faq', '#contact']
-  const labels = ['Why WVH', 'Our Solutions', 'How It Works', 'Packages', 'FAQ', 'Contact']
+  const nav = ['#problem','#solution','#how','#packages','#faq','#contact']
+  const labels = ['Why WVH','Our Solutions','How It Works','Packages','FAQ','Contact']
   return (
     <footer className="footer">
       <div className="container">
         <div className="footer-top">
           <div className="footer-brand">
             <div className="footer-brand-name">WVH <span>Developments</span> Ltd</div>
-            <p className="footer-tagline">The complete AI automation system built exclusively for UK mortgage brokers. Never miss another lead. Never miss another opportunity.</p>
+            <p className="footer-tagline">Complete AI automation systems built for businesses that refuse to miss a lead.</p>
           </div>
           <div>
             <div className="footer-nav-title">Navigation</div>
-            <div className="footer-nav-links">
-              {nav.map((href, i) => <a key={href} href={href}>{labels[i]}</a>)}
-            </div>
+            <div className="footer-nav-links">{nav.map((href,i) => <a key={href} href={href}>{labels[i]}</a>)}</div>
           </div>
           <div>
             <div className="footer-nav-title">Contact</div>
-            <div className="footer-nav-links">
-              <a href="mailto:will@wvhdevelopments.com">will@wvhdevelopments.com</a>
-            </div>
+            <div className="footer-nav-links"><a href="mailto:will@wvhdevelopments.com">will@wvhdevelopments.com</a></div>
           </div>
         </div>
         <div className="footer-bottom">
@@ -671,11 +721,11 @@ function Footer() {
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false)
   useScrollAnimations()
+  useTiltCards()
   return (
     <>
       <Nav onOpenChat={() => setChatOpen(true)} />
       <Hero onOpenChat={() => setChatOpen(true)} />
-      <TrustBar />
       <Problem />
       <Solution />
       <HowItWorks />
