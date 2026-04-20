@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import * as THREE from 'three'
 const whatsappVideo = '/whatsapp.mp4'
-const phoneVideo = '/phone.MOV'
+const phoneVideo = '/phone.mp4'
 import {
   Menu, X, ArrowRight, ChevronDown,
   PhoneOff, Moon, ClipboardList, Zap,
@@ -259,8 +259,7 @@ function Hero({ onOpenChat }) {
           </div>
           <h1 className="hero-title anim d1">
             Never Miss<br />
-            <span className="accent-gold">Another Lead.</span><br />
-            <span className="accent-blue">Ever Again.</span>
+            <span className="accent-gold">Another Lead.</span>
           </h1>
           <p className="hero-sub anim d2">
             We build complete AI systems — chatbots, WhatsApp bots, AI phone assistants and professional websites

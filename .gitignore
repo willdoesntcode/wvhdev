@@ -25,8 +25,3 @@ dist-ssr
 .vercel
 .env*.local
 
-# Large video files — upload to Vercel manually or host on YouTube/Vimeo
-public/*.mp4
-public/*.MOV
-public/*.mov
-public/*.webm
