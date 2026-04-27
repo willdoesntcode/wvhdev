@@ -45,7 +45,9 @@ async function callAPI(messages) {
     body: JSON.stringify({ messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages] }),
   })
   const data = await res.json()
-  return data.choices?.[0]?.message?.content || 'Something went wrong. Email will@wvhdevelopments.com.'
+  if (data.error) throw new Error(data.error)
+  if (!data.choices?.[0]?.message?.content) throw new Error('No response from AI')
+  return data.choices[0].message.content
 }
 
 /* ─── Custom Cursor ─────────────────────────────────────────────── */
@@ -563,8 +565,8 @@ function ChatbotSection() {
     try {
       const reply = await callAPI(next)
       setMessages(m => [...m, { role: 'assistant', content: reply }])
-    } catch {
-      setMessages(m => [...m, { role: 'assistant', content: 'Something went wrong. Please email will@wvhdevelopments.com.' }])
+    } catch (err) {
+      setMessages(m => [...m, { role: 'assistant', content: `Error: ${err.message}. Please email will@wvhdevelopments.com.` }])
     }
     setLoading(false)
   }
@@ -646,8 +648,8 @@ function FloatingChatbot() {
     try {
       const reply = await callAPI(next)
       setMessages(m => [...m, { role: 'assistant', content: reply }])
-    } catch {
-      setMessages(m => [...m, { role: 'assistant', content: 'Something went wrong. Please email will@wvhdevelopments.com.' }])
+    } catch (err) {
+      setMessages(m => [...m, { role: 'assistant', content: `Error: ${err.message}. Please email will@wvhdevelopments.com.` }])
     }
     setLoading(false)
   }
