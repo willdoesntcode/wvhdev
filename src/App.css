@@ -741,6 +741,95 @@ input  { font-family: inherit; }
   color: rgba(255,255,255,0.2);
 }
 
+/* ── Floating Chatbot ───────────────────────────────────────────── */
+.float-chat {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.float-btn {
+  position: relative;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: #FFF;
+  cursor: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(255,77,0,0.35);
+  transition: background 0.2s, transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+  flex-shrink: 0;
+}
+.float-btn:hover {
+  background: #e64400;
+  transform: scale(1.08);
+  box-shadow: 0 12px 40px rgba(255,77,0,0.45);
+}
+.float-btn--open { background: var(--dark-3); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.float-btn--open:hover { background: #2a2a2a; }
+.float-btn-pulse {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: floatPulse 2s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes floatPulse {
+  0%   { transform: scale(1);    opacity: 0.7; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+.float-panel {
+  width: 340px;
+  background: var(--dark);
+  border: 1px solid var(--dark-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+  animation: floatSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes floatSlideUp {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.float-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  background: var(--dark-2);
+  border-bottom: 1px solid var(--dark-border);
+}
+.float-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--subtle);
+  cursor: none;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  transition: color 0.2s;
+}
+.float-close:hover { color: #FFF; }
+.float-messages {
+  height: 260px;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dark-border) transparent;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .services-grid { grid-template-columns: repeat(2, 1fr); }

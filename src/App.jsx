@@ -9,32 +9,44 @@ import {
 import './App.css'
 
 /* ─── System Prompt ─────────────────────────────────────────────── */
-const SYSTEM_PROMPT = `You are the AI assistant for WVH Developments Ltd, a UK-based premium tech agency. You are professional, confident and concise.
+const SYSTEM_PROMPT = `You are the AI assistant for WVH Developments Ltd, a UK-based premium tech agency. Be warm, confident and concise. Never use bullet points or dashes in your replies.
 
 SERVICES:
-- Website Development & Hosting (with or without payment systems)
-- App Development & Hosting (mobile and web, with or without payment systems)
-- Social Media Management & Growth
-- AI Chatbots (website and in-app)
-- WhatsApp Automation (lead qualification, FAQ handling, full automation)
-- AI Phone Assistant (24/7 call handling, lead qualification)
-- Custom Backend Systems (booking, payments, admin dashboards, databases)
-- Full Tech Management — one monthly retainer covers everything
+Website Development and Hosting (with or without payment systems)
+App Development and Hosting (mobile and web, with or without payment systems)
+Social Media Management and Growth
+AI Chatbots (website and in-app)
+WhatsApp Automation (lead qualification, FAQ handling, full automation)
+AI Phone Assistant (24/7 call handling, lead qualification)
+Custom Backend Systems (booking, payments, admin dashboards, databases)
+Full Tech Management, one monthly retainer covers everything
 
 PACKAGES:
-- Single services available individually
-- Full Stack Retainer: everything above, fully managed monthly — most popular
-All pricing is bespoke. Direct anyone asking to email will@wvhdevelopments.com
+Single services are available individually.
+Full Stack Retainer: everything above, fully managed monthly. Most popular option.
+All pricing is bespoke.
 
 KEY FACTS:
-- Setup: typically 2-3 weeks
-- No long-term contracts — cancel with 30 days notice
-- No technical knowledge required from the client
-- One point of contact — Will handles everything personally
-- AI phone assistant can use a new number, forward from existing, or handle missed/out-of-hours only
+Setup typically takes 2 to 3 weeks.
+No long-term contracts, cancel with 30 days notice.
+No technical knowledge required from the client.
+One point of contact. Will handles everything personally.
+AI phone assistant works with a Twilio number. If clients want it to only handle missed calls, they set up conditional call forwarding on their existing phone so unanswered calls route to the AI. Simple to set up on any UK network.
 
 CONTACT: will@wvhdevelopments.com
-If someone wants a quote or demo, tell them to email will@wvhdevelopments.com. Never invent information.`
+
+IMPORTANT BEHAVIOR: After answering any question, always end with a natural, friendly nudge to get in touch. For example: "The best next step is to drop Will an email at will@wvhdevelopments.com — he will get back to you quickly." or "Feel free to email will@wvhdevelopments.com for a tailored quote." Vary the phrasing but always include the email address. If someone asks for pricing or seems ready to move forward, be more direct about it. Your goal is to answer their question AND get them to make contact.`
+
+/* ─── Shared chat logic ──────────────────────────────────────────── */
+async function callAPI(messages) {
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages] }),
+  })
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content || 'Something went wrong. Email will@wvhdevelopments.com.'
+}
 
 /* ─── Custom Cursor ─────────────────────────────────────────────── */
 function CustomCursor() {
@@ -50,7 +62,6 @@ function CustomCursor() {
     let hovering = false, rafId
 
     const onMove = (e) => { mx = e.clientX; my = e.clientY }
-
     const setHover = (v) => () => { hovering = v }
 
     const tick = () => {
@@ -106,20 +117,17 @@ function HeroCanvas() {
     const group = new THREE.Group()
     scene.add(group)
 
-    // Central icosahedron
     const coreGeo = new THREE.IcosahedronGeometry(1.1, 1)
     const coreMat = new THREE.MeshBasicMaterial({ color: 0xFF4D00, wireframe: true, transparent: true, opacity: 0.45 })
     const core = new THREE.Mesh(coreGeo, coreMat)
     group.add(core)
 
-    // Orbiting shapes
     const orbiters = [
       { geo: new THREE.OctahedronGeometry(0.42), color: 0xFF4D00, opacity: 0.22, x: 3.0, y: 0.8, z: -0.5 },
       { geo: new THREE.TetrahedronGeometry(0.35), color: 0xFFFFFF, opacity: 0.12, x: -3.2, y: 0.4, z: 0.3 },
       { geo: new THREE.IcosahedronGeometry(0.28, 0), color: 0xFF4D00, opacity: 0.18, x: 2.0, y: -1.6, z: 1.0 },
       { geo: new THREE.OctahedronGeometry(0.22), color: 0xFFFFFF, opacity: 0.10, x: -1.8, y: -1.2, z: -0.8 },
     ]
-
     const orbMeshes = orbiters.map(o => {
       const m = new THREE.Mesh(
         o.geo,
@@ -130,7 +138,6 @@ function HeroCanvas() {
       return m
     })
 
-    // Wave plane
     const planeSegs = isMobile ? 20 : 32
     const planeGeo = new THREE.PlaneGeometry(18, 18, planeSegs, planeSegs)
     const planeMat = new THREE.MeshBasicMaterial({ color: 0xFF4D00, wireframe: true, transparent: true, opacity: 0.07 })
@@ -139,7 +146,6 @@ function HeroCanvas() {
     plane.position.y = -4
     scene.add(plane)
 
-    // Particles
     const pCount = isMobile ? 60 : 110
     const pPos = new Float32Array(pCount * 3)
     for (let i = 0; i < pCount; i++) {
@@ -172,7 +178,6 @@ function HeroCanvas() {
       rafId = requestAnimationFrame(animate)
       t += 0.006
 
-      // Wave plane vertex animation
       const pos = planeGeo.attributes.position
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i), y = pos.getY(i)
@@ -180,18 +185,15 @@ function HeroCanvas() {
       }
       pos.needsUpdate = true
 
-      // Core rotation
       core.rotation.y += 0.004
       core.rotation.x += 0.002
 
-      // Orbiter rotations and float
       orbMeshes.forEach((m, i) => {
         m.rotation.y += 0.006 * (i % 2 === 0 ? 1 : -1)
         m.rotation.z += 0.004 * (i % 3 === 0 ? 1 : -1)
         m.position.y += Math.sin(t * 0.6 + i * 1.5) * 0.0015
       })
 
-      // Mouse parallax on group
       group.rotation.y += (mouseX * 0.12 - group.rotation.y) * 0.035
       group.rotation.x += (-mouseY * 0.08 - group.rotation.x) * 0.035
       camera.position.x += (mouseX * 1.2 - camera.position.x) * 0.025
@@ -322,13 +324,13 @@ function Hero() {
     <section className="hero-section">
       <HeroCanvas />
       <div className="hero-content container">
-        <div className="hero-label anim">WVH Developments Ltd — Premium Tech Agency</div>
+        <div className="hero-label anim">WVH Developments Ltd · Premium Tech Agency</div>
         <h1 className="hero-title">
           <span className="hero-line anim d1">Your Tech.</span>
           <span className="hero-line anim d2">Our <span className="accent-o">Problem.</span></span>
         </h1>
         <p className="hero-sub anim d3">
-          We build, host and manage your complete digital operation —
+          We build, host and manage your complete digital operation:
           websites, apps, AI, automations and payments.
           One partner. Zero headaches.
         </p>
@@ -373,22 +375,22 @@ function Services() {
   const services = [
     {
       icon: <Globe size={26} />, num: '01', title: 'Website Development',
-      desc: 'Premium websites built from scratch. Fast, responsive, conversion-focused. Includes hosting, maintenance and updates.',
+      desc: 'Premium websites built from scratch. Fast, responsive and conversion focused. Includes hosting, maintenance and updates.',
       tags: ['Design & Build', 'Hosting', 'Payments Optional'],
     },
     {
       icon: <Smartphone size={26} />, num: '02', title: 'App Development',
-      desc: 'Web and mobile apps built to your exact specification. Backend, database, auth and payments — all included.',
+      desc: 'Web and mobile apps built to your exact specification. Backend, database, auth and payments. All included.',
       tags: ['iOS / Android', 'Web Apps', 'Payments Optional'],
     },
     {
       icon: <Bot size={26} />, num: '03', title: 'AI Chatbots',
-      desc: 'Intelligent chatbots embedded in your website or app. Qualify leads, answer FAQs and book appointments — 24/7.',
-      tags: ['Website', 'In-App', 'Lead Qualification'],
+      desc: 'Intelligent chatbots embedded in your website or app. Qualify leads, answer FAQs and book appointments. Around the clock.',
+      tags: ['Website', 'In App', 'Lead Qualification'],
     },
     {
       icon: <MessageCircle size={26} />, num: '04', title: 'WhatsApp Automation',
-      desc: 'Fully automated WhatsApp systems. Handle enquiries, qualify leads, send follow-ups and answer FAQs — automatically.',
+      desc: 'Fully automated WhatsApp systems. Handle enquiries, qualify leads, send follow-ups and answer FAQs. Automatically.',
       tags: ['Lead Qualification', 'FAQ Bot', '24/7'],
     },
     {
@@ -398,17 +400,17 @@ function Services() {
     },
     {
       icon: <TrendingUp size={26} />, num: '06', title: 'Social Media Management',
-      desc: 'Full social media management and growth. Content, strategy, posting and engagement — handled every month.',
+      desc: 'Full social media management and growth. Content, strategy, posting and engagement. Handled every month.',
       tags: ['Content', 'Growth Strategy', 'Monthly Management'],
     },
     {
       icon: <Code2 size={26} />, num: '07', title: 'Custom Backend Systems',
-      desc: 'Bespoke software built for your business. Booking systems, payment flows, admin dashboards and databases — built to order.',
+      desc: 'Bespoke software built for your business. Booking systems, payment flows, admin dashboards and databases, built to order.',
       tags: ['Booking Systems', 'Payments', 'Admin Dashboards'],
     },
     {
       icon: <Settings size={26} />, num: '08', title: 'Full Tech Management',
-      desc: 'One monthly retainer. Every digital system — built, hosted, managed and maintained by one expert. You focus on the business.',
+      desc: 'One monthly retainer. Every digital system built, hosted, managed and maintained by one expert. You focus on the business.',
       tags: ['Everything Included', 'Monthly Retainer', 'Priority Support'],
       highlight: true,
     },
@@ -422,8 +424,8 @@ function Services() {
           Everything Your Business<br />Needs. One Place.
         </h2>
         <p className="section-sub anim d2">
-          From a single website to a complete AI-powered digital operation —
-          we build and manage it all.
+          From a single website to a complete AI-powered digital operation.
+          We build and manage it all.
         </p>
         <div className="services-grid">
           {services.map((s, i) => (
@@ -456,7 +458,7 @@ function FullStackPitch() {
     'AI phone assistant, answering calls 24/7',
     'Social media managed and growing every month',
     'Custom backend software as your business needs it',
-    'Everything hosted, maintained and updated — forever',
+    'Everything hosted, maintained and updated. Forever.',
   ]
 
   return (
@@ -470,7 +472,7 @@ function FullStackPitch() {
             </h2>
             <p className="section-sub section-sub--light anim d2">
               The highest-value option. One monthly retainer covers your entire digital
-              operation — built to your spec, managed by us, running around the clock.
+              operation. Built to your spec, managed by us, running around the clock.
             </p>
             <a href="mailto:will@wvhdevelopments.com" className="btn-primary mag-btn anim d3">
               Discuss the Retainer <ArrowRight size={16} />
@@ -486,7 +488,7 @@ function FullStackPitch() {
                 </div>
               ))}
               <div className="pitch-footer">
-                Bespoke pricing — built around your business and budget
+                Bespoke pricing, built around your business and budget
               </div>
             </div>
           </div>
@@ -501,15 +503,15 @@ function Process() {
   const steps = [
     {
       num: '01', title: 'Discovery Call',
-      desc: "We learn exactly what your business needs. No sales pitch — just a genuine conversation about what would make the biggest difference for you.",
+      desc: "We learn exactly what your business needs. No sales pitch, just a genuine conversation about what would make the biggest difference for you.",
     },
     {
       num: '02', title: 'We Build Everything',
-      desc: "We design, build and configure every system to your exact specification. Most clients are fully live within 2–3 weeks.",
+      desc: "We design, build and configure every system to your exact specification. Most clients are fully live within 2 to 3 weeks.",
     },
     {
-      num: '03', title: 'Launch & Integration',
-      desc: "Everything goes live — website, app, AI systems, automations — all connected, tested and running without any input from you.",
+      num: '03', title: 'Launch and Integration',
+      desc: "Everything goes live: website, app, AI systems and automations. All connected, tested and running without any input from you.",
     },
     {
       num: '04', title: 'Ongoing Management',
@@ -522,7 +524,7 @@ function Process() {
       <div className="container">
         <div className="section-label anim">How It Works</div>
         <h2 className="section-heading anim d1">
-          From First Call to<br />Fully Running — Fast.
+          From First Call to<br />Fully Running. Fast.
         </h2>
         <div className="process-grid">
           {steps.map((s, i) => (
@@ -538,10 +540,10 @@ function Process() {
   )
 }
 
-/* ─── Chatbot ───────────────────────────────────────────────────── */
+/* ─── Chatbot Section ───────────────────────────────────────────── */
 function ChatbotSection() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: "Hi — I'm the WVH AI. Ask me anything about our services, pricing or how we work." }
+    { role: 'assistant', content: "Hi! I'm the WVH AI. Ask me anything about our services, pricing or how we work." }
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -559,13 +561,7 @@ function ChatbotSection() {
     setMessages(next)
     setLoading(true)
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...next] }),
-      })
-      const data = await res.json()
-      const reply = data.choices?.[0]?.message?.content || 'Something went wrong. Email will@wvhdevelopments.com.'
+      const reply = await callAPI(next)
       setMessages(m => [...m, { role: 'assistant', content: reply }])
     } catch {
       setMessages(m => [...m, { role: 'assistant', content: 'Something went wrong. Please email will@wvhdevelopments.com.' }])
@@ -582,7 +578,7 @@ function ChatbotSection() {
             <h2 className="section-heading anim d1">Talk to the AI.<br />Right Now.</h2>
             <p className="section-sub anim d2">
               This is the same AI system we build for our clients.
-              Ask it anything — services, how it works, pricing.
+              Ask it anything: services, how it works, pricing.
               See it in action before you commit to anything.
             </p>
           </div>
@@ -626,6 +622,90 @@ function ChatbotSection() {
   )
 }
 
+/* ─── Floating Chatbot ──────────────────────────────────────────── */
+function FloatingChatbot() {
+  const [open, setOpen] = useState(false)
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: "Hey! What can I help you with? Ask me anything about what we offer." }
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const bottomRef = useRef(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
+
+  const send = async () => {
+    const text = input.trim()
+    if (!text || loading) return
+    setInput('')
+    const next = [...messages, { role: 'user', content: text }]
+    setMessages(next)
+    setLoading(true)
+    try {
+      const reply = await callAPI(next)
+      setMessages(m => [...m, { role: 'assistant', content: reply }])
+    } catch {
+      setMessages(m => [...m, { role: 'assistant', content: 'Something went wrong. Please email will@wvhdevelopments.com.' }])
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="float-chat">
+      {open && (
+        <div className="float-panel">
+          <div className="float-panel-header">
+            <div className="chatbot-avatar"><Bot size={15} /></div>
+            <div>
+              <div className="chatbot-name">WVH AI</div>
+              <div className="chatbot-status"><span className="live-dot" />Online</div>
+            </div>
+            <button className="float-close" onClick={() => setOpen(false)}>
+              <X size={16} />
+            </button>
+          </div>
+          <div className="float-messages">
+            {messages.map((m, i) => (
+              <div key={i} className={`chat-msg ${m.role}`}>
+                <p>{m.content}</p>
+              </div>
+            ))}
+            {loading && (
+              <div className="chat-msg assistant">
+                <div className="typing-dots"><span /><span /><span /></div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+          <div className="chatbot-input-row">
+            <input
+              className="chatbot-input"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && send()}
+              placeholder="Ask anything..."
+              autoFocus
+            />
+            <button className="chatbot-send" onClick={send} disabled={loading}>
+              <Send size={15} />
+            </button>
+          </div>
+        </div>
+      )}
+      <button
+        className={`float-btn${open ? ' float-btn--open' : ''}`}
+        onClick={() => setOpen(o => !o)}
+        aria-label="Chat with WVH AI"
+      >
+        {open ? <X size={22} /> : <Bot size={22} />}
+        {!open && <span className="float-btn-pulse" />}
+      </button>
+    </div>
+  )
+}
+
 /* ─── FAQ ───────────────────────────────────────────────────────── */
 function FAQ() {
   const [open, setOpen] = useState(null)
@@ -633,31 +713,31 @@ function FAQ() {
   const faqs = [
     {
       q: 'Can you really handle everything?',
-      a: "Yes. Website, app, AI chatbot, WhatsApp automation, AI phone assistant, social media, custom backend software, hosting, maintenance — all of it. One point of contact, one invoice, zero technical stress on your end.",
+      a: "Yes. Website, app, AI chatbot, WhatsApp automation, AI phone assistant, social media, custom backend software, hosting and maintenance. All of it. One point of contact, one invoice, zero technical stress on your end.",
     },
     {
       q: 'How long does it take to get started?',
-      a: "Most clients are fully live within 2–3 weeks of the initial call. We move fast and handle the entire setup — no technical input required from you whatsoever.",
+      a: "Most clients are fully live within 2 to 3 weeks of the initial call. We move fast and handle the entire setup. No technical input required from you whatsoever.",
     },
     {
       q: 'How does pricing work?',
-      a: "All pricing is bespoke — built around exactly what you need. Typically there's a one-off build fee and a monthly management retainer. Get in touch at will@wvhdevelopments.com for a tailored quote.",
+      a: "All pricing is bespoke, built around exactly what you need. Typically there is a one-off build fee and a monthly management retainer. Get in touch at will@wvhdevelopments.com for a tailored quote.",
     },
     {
       q: 'Am I locked into a contract?',
-      a: "No long-term contracts. You can cancel with 30 days notice at any time. We earn your business every month — not by locking you in.",
+      a: "No long-term contracts. You can cancel with 30 days notice at any time. We earn your business every month, not by locking you in.",
     },
     {
       q: 'Do I need any technical knowledge?',
-      a: "Absolutely not. We handle everything. You won't need to touch code, DNS settings, servers or anything technical. Just tell us what you need and we'll take it from there.",
+      a: "Absolutely not. We handle everything. You will not need to touch code, DNS settings, servers or anything technical. Just tell us what you need and we will take it from there.",
     },
     {
-      q: 'What if I only need one thing — like just a website?',
-      a: "No problem. We build individual services as well as full-stack packages. Whether you need a single website or a complete AI-powered operation, we've got you covered.",
+      q: 'What if I only need one thing, like just a website?',
+      a: "No problem. We build individual services as well as full-stack packages. Whether you need a single website or a complete AI-powered operation, we have got you covered.",
     },
     {
-      q: 'Can the AI phone assistant use my existing number?',
-      a: "Yes — fully flexible. We can set it up with a brand new number, forward calls from your existing number, or run it purely for out-of-hours and missed calls. However you want to work it.",
+      q: 'How does the AI phone assistant work with my number?',
+      a: "We set it up on a Twilio number. If you want it to only handle missed calls, you set up conditional call forwarding on your existing phone so unanswered calls automatically route to the AI. Every UK network supports this and it takes about 30 seconds to activate. Your existing number stays exactly the same.",
     },
   ]
 
@@ -766,6 +846,7 @@ export default function App() {
         <CTA />
       </main>
       <Footer />
+      <FloatingChatbot />
     </>
   )
 }
