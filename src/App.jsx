@@ -44,9 +44,14 @@ async function callAPI(messages) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages] }),
   })
-  const data = await res.json()
+  let data
+  try {
+    data = await res.json()
+  } catch {
+    throw new Error('Could not reach the AI server. Try again in a moment.')
+  }
   if (data.error) throw new Error(data.error)
-  if (!data.choices?.[0]?.message?.content) throw new Error('No response from AI')
+  if (!data.choices?.[0]?.message?.content) throw new Error('No response received from AI.')
   return data.choices[0].message.content
 }
 
@@ -550,8 +555,10 @@ function ChatbotSection() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef(null)
+  const mounted = useRef(false)
 
   useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
@@ -633,8 +640,10 @@ function FloatingChatbot() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef(null)
+  const mounted = useRef(false)
 
   useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
